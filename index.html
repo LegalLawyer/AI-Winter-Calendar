@@ -1,0 +1,547 @@
+<!doctype html>
+<html lang="en">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Interactive Advent Calendar</title>
+  <script src="/_sdk/element_sdk.js"></script>
+  <style>
+    body {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Georgia', serif;
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 2rem 1rem;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    .container {
+      max-width: 1200px;
+      width: 100%;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+      position: relative;
+    }
+
+    .snowflakes {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 999;
+      overflow: hidden;
+    }
+
+    .snowflake {
+      position: absolute;
+      top: -10px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 1.5rem;
+      animation: fall linear infinite;
+    }
+
+    @keyframes fall {
+      to {
+        transform: translateY(100vh) rotate(360deg);
+      }
+    }
+
+    .winter-decoration {
+      font-size: 3rem;
+      display: inline-block;
+      margin: 0 0.5rem;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    @keyframes float {
+      0%, 100% {
+        transform: translateY(0px);
+      }
+      50% {
+        transform: translateY(-10px);
+      }
+    }
+
+    h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 2.5rem;
+      font-weight: 700;
+    }
+
+    .subtitle {
+      margin: 0;
+      font-size: 1.1rem;
+      opacity: 0.8;
+    }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .logo-placeholder {
+      aspect-ratio: 1;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px dashed rgba(255, 255, 255, 0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      text-align: center;
+    }
+
+    .logo-icon {
+      font-size: 3rem;
+      margin-bottom: 0.5rem;
+      opacity: 0.6;
+    }
+
+    .logo-text {
+      font-size: 0.9rem;
+      opacity: 0.7;
+    }
+
+    .door {
+      aspect-ratio: 1;
+      position: relative;
+      cursor: pointer;
+      border-radius: 12px;
+      overflow: hidden;
+      transition: transform 0.2s ease;
+    }
+
+    .door:hover {
+      transform: scale(1.05);
+    }
+
+    .door-front {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+      font-weight: bold;
+      border-radius: 12px;
+      transition: transform 0.6s ease;
+      transform-style: preserve-3d;
+      backface-visibility: hidden;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .door-back {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+      font-size: 0.9rem;
+      line-height: 1.4;
+      text-align: center;
+      border-radius: 12px;
+      opacity: 0;
+      transition: opacity 0.3s ease 0.3s;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .door.opened .door-front {
+      transform: rotateY(180deg);
+    }
+
+    .door.opened .door-back {
+      opacity: 1;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+
+    .modal.active {
+      display: flex;
+    }
+
+    .modal-content {
+      max-width: 500px;
+      width: 100%;
+      padding: 2rem;
+      border-radius: 16px;
+      position: relative;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background 0.2s ease;
+    }
+
+    .modal-close:hover {
+      background: rgba(0, 0, 0, 0.1);
+    }
+
+    .modal-day {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 0 0 1rem 0;
+    }
+
+    .modal-tip {
+      font-size: 1.1rem;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 2rem;
+      }
+
+      .subtitle {
+        font-size: 1rem;
+      }
+
+      .calendar-grid {
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+        gap: 0.75rem;
+      }
+
+      .door-front {
+        font-size: 2rem;
+      }
+
+      .door-back {
+        font-size: 0.8rem;
+        padding: 0.75rem;
+      }
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.tailwindcss.com" type="text/javascript"></script>
+ </head>
+ <body>
+  <div class="snowflakes" id="snowflakes"></div>
+  <div class="container">
+   <div class="header">
+    <div><span class="winter-decoration">❄️</span> <span class="winter-decoration">⛄</span> <span class="winter-decoration">❄️</span>
+    </div>
+    <h1 id="calendar-title">24 Days of ChatGPT</h1>
+    <p class="subtitle" id="subtitle">Click a door each day to reveal a new tip!</p>
+   </div>
+   <div class="calendar-grid" id="calendar-grid"></div>
+  </div>
+  <div class="modal" id="modal">
+   <div class="modal-content" id="modal-content"><button class="modal-close" id="modal-close" aria-label="Close">×</button>
+    <p class="modal-day" id="modal-day"></p>
+    <p class="modal-tip" id="modal-tip"></p>
+   </div>
+  </div>
+  <script>
+    const defaultConfig = {
+      calendar_title: "24 Days of ChatGPT",
+      subtitle: "Click a door each day to reveal a new tip!",
+      background_color: "#1a365d",
+      surface_color: "#2d3748",
+      text_color: "#ffffff",
+      primary_action_color: "#4299e1",
+      secondary_action_color: "#ed8936",
+      font_family: "Georgia",
+      font_size: 16,
+      tip_1: "When using ChatGPT for client related work, make sure to check the <a href='https://www.google.com' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>AI Exclusion</a> list prior to uploading client information. If you are unsure, err on the side of caution and consult with the managing attorney.",
+      tip_2: "Use only the Sidley approved <a href='https://www.google.com' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>ChatGPT</a> environment. Do not use personal ChatGPT accounts or access other personal generative AI platforms for business.",
+      tip_3: "Not sure where to get started using ChatGPT? <a href='https://chatgpt.com/?q=I%20am%20a%20%5BROLE%5D%20in%20the%20%5BDEPARTMENT%2FPRACTICE%20GROUP%5D%20at%20Sidley.%20I%20have%20not%20used%20ChatGPT%20too%20much%20before%20and%20want%20to%20know%20how%20it%20can%20help%20me%20in%20my%20day%20to%20day%20work' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>Try asking ChatGPT!</a> (This link will take you to a prefilled prompt to try)",
+      tip_4: "Hallucinations can happen in any generative AI product. Make sure to verify every output. While it may sound counterintuitive, you can ask ChatGPT to provide citations and sources for its conclusions as an extra level of proofreading.",
+      tip_5: "Have multiple chats you constantly go back to but it's hard to find them again? <a href='https://help.openai.com/en/articles/10169521-projects-in-chatgpt' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>Consider keeping them organized in a project folder!</a>",
+      tip_6: "Content is key when working with ChatGPT, but do you want to type your job role every time? <a href='https://help.openai.com/en/articles/8096356-chatgpt-custom-instructions' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>Consider adding custom instructions to bake in that information to all your prompting</a> such as your preferred style and tone.",
+      tip_7: "Use ChatGPT as your starting point and not your final product. Think of ChatGPT as your first drafter, not your final reviewer. With this mindset, you can accelerate your work while maintaining your knowledge, skills, and personal style in the work product!",
+      tip_8: "Ever half way through an email and stalled on your next word? <a href='https://chatgpt.com/?q=Take%20a%20look%20at%20the%20email%20draft%20I%20have%20below.%20Provide%203%20drafts%20of%20fully%20completed%20emails%20that%20maintain%20my%20current%20tone%20and%20messaging' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>Try cutting and pasting what you have into ChatGPT</a> and see if it can finish your sandwi...sentence.",
+      tip_9: "Brainstorming is one of the best ways to leverage ChatGPT. You can explore workflows, create pro/con lists, ask for variations of your current ideas, and <a href='https://chatgpt.com/?q=I%20have%20the%20following%20workflow%20that%20I%20use%20in%20my%20day%20to%20day%20work.%20Can%20you%20provide%20me%20some%20suggestions%20on%20how%20to%20improve%20that%20process' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>even ask for constructive feedback.</a>",
+      tip_10: "Before sharing text that was generated with the assistance of AI, consider rephrasing anything that sounds \"too certain\" from your point of view. AI models aim to be confident in their responses and that sometimes means TOO MUCH confidence.",
+      tip_11: "If you need an output to have a specific tone or audience, just tell ChatGPT in your prompt: <a href='https://chatgpt.com/?q=I%20am%20writing%20an%20email%20to%20senior%20leadership.%20Can%20you%20review%20the%20following%20draft%20to%20make%20suggestions%20for%20clarity%20and%20length' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>\"I am writing an email to senior leadership. Can you review the following draft to make suggestions for clarity and length?\"</a>",
+      tip_12: "Need a quick summary of a new regulation? Paste in the public text and ask: <a href='https://chatgpt.com/?q=Summarize%20this%20for%20a%20client%20alert%20in%20Sidley's%20tone' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>\"Summarize this for a client alert in Sidley's tone.\"</a> You'll get a concise, compliance-friendly draft to refine.",
+      tip_13: "<a href='https://help.openai.com/en/articles/10169521-projects-in-chatgpt#h_35888f7a8e' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>Use knowledge folders in projects</a> to keep related materials together. Think training documents, templates, notes, or internal reference manuals. Your chats in those projects can draw on that knowledge base when responding to you!",
+      tip_14: "Projects in ChatGPT let you organize work by topic such as \"Contract Review Framework\" or \"Monthly Meetings\". Each project folder can have its own knowledge source to draw on as well, helping you stay even more organized!",
+      tip_15: "Have a task or workflow you find yourself doing time and time again? Custom GPTs are tailored versions of ChatGPT for specific workflows and can be created by your prompts. <a href='https://help.openai.com/en/articles/8798878-building-and-publishing-a-gpt' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>Try making one today by selecting the GPT tab in ChatGPT!</a>",
+      tip_16: "<a href='https://academy.openai.com/public/clubs/work-users-ynjqu/resources/projects' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>Did you know you can share a project with others at Sidley?</a> A shared project can act as a living workspace to collaborate across chats and share the same knowledge source all in one convenient location!",
+      tip_17: "If you take notes with pen and paper, you can get those converted quickly into ChatGPT! With an image of your handwritten page, ChatGPT can read your handwriting and convert it into text instantly (yes, it can actually read a lawyer's handwriting).",
+      tip_18: "For those more intensive research topics, consider using ChatGPT's <a href='https://chatgpt.com/features/deep-research/' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>Deep Research</a>. While this mode takes longer than a typical prompt, the depth and level of detail is worth the wait.",
+      tip_19: "When reviewing for hallucinations, it might be helpful to have a checklist to go down. <a href='https://chatgpt.com/?q=Create%20a%20bulleted%20list%20of%20quality-control%20steps%20for%20reviewing%20AI-generated%20drafts' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>ChatGPT can help with that!</a>",
+      tip_20: "Still confused about prompting and best practices? <a href='https://chatgpt.com/?q=List%20key%20prompt%20structures%20(e.g.%2C%20role-based%2C%20step-by-step%2C%20audit-style)%20and%20when%20to%20use%20each' target='_blank' rel='noopener noreferrer' style='color: #4299e1; text-decoration: underline;'>This quick prompt will help you go over different styles of prompting and how to use them.</a>",
+      tip_21: "ChatGPT is meant to accelerate your work and help you get things done. Remember, the output you get from ChatGPT should only be considered a starting point, not a final product.",
+      tip_22: "When in doubt for prompting, narrate your intent! Start prompts with WHY you're asking (\"to draft, to summarize, to clarify\"). The clearer the goal, the cleaner the output.",
+      tip_23: "End of the year cleanup: create some project folders to store chats you frequent, delete old chats just taking up space, and review your custom instructions. Start the new year right!",
+      tip_24: "Thank you for taking the time to learn about ChatGPT! We hope you took away a helpful tip or two and wishing you a Happy New Year!",
+      tip_25: "Thank you for exploring these tips! May your winter season be filled with warmth, joy, and productivity. Here's to a wonderful new year ahead! ❄️✨"
+    };
+
+    const doorColors = [
+      "#e53e3e", "#dd6b20", "#d69e2e", "#38a169",
+      "#319795", "#3182ce", "#5a67d8", "#805ad5",
+      "#d53f8c", "#e53e3e", "#dd6b20", "#d69e2e",
+      "#38a169", "#319795", "#3182ce", "#5a67d8",
+      "#805ad5", "#d53f8c", "#e53e3e", "#dd6b20",
+      "#d69e2e", "#38a169", "#319795", "#3182ce"
+    ];
+
+    let openedDoors = new Set();
+
+    function createCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      grid.innerHTML = '';
+
+      for (let i = 1; i <= 24; i++) {
+        const door = document.createElement('div');
+        door.className = 'door';
+        door.dataset.day = i;
+
+        const front = document.createElement('div');
+        front.className = 'door-front';
+        front.textContent = i;
+        front.style.backgroundColor = doorColors[i - 1];
+        front.style.color = window.elementSdk?.config?.text_color || defaultConfig.text_color;
+
+        const back = document.createElement('div');
+        back.className = 'door-back';
+        back.style.backgroundColor = window.elementSdk?.config?.secondary_action_color || defaultConfig.secondary_action_color;
+        back.style.color = window.elementSdk?.config?.text_color || defaultConfig.text_color;
+        back.textContent = '🎁';
+
+        door.appendChild(front);
+        door.appendChild(back);
+
+        door.addEventListener('click', () => openDoor(i));
+
+        grid.appendChild(door);
+      }
+
+
+    }
+
+    function openDoor(day) {
+      const door = document.querySelector(`[data-day="${day}"]`);
+      if (!door.classList.contains('opened')) {
+        door.classList.add('opened');
+        openedDoors.add(day);
+      }
+
+      showModal(day);
+    }
+
+    function showModal(day) {
+      const modal = document.getElementById('modal');
+      const modalDay = document.getElementById('modal-day');
+      const modalTip = document.getElementById('modal-tip');
+      const modalContent = document.getElementById('modal-content');
+
+      const config = window.elementSdk?.config || defaultConfig;
+      const tipKey = `tip_${day}`;
+      const tip = config[tipKey] || defaultConfig[tipKey];
+
+      modalDay.textContent = `Day ${day}`;
+      modalTip.innerHTML = tip;
+
+      modalContent.style.backgroundColor = config.surface_color || defaultConfig.surface_color;
+      modalDay.style.color = config.text_color || defaultConfig.text_color;
+      modalTip.style.color = config.text_color || defaultConfig.text_color;
+
+      modal.classList.add('active');
+    }
+
+    function closeModal() {
+      const modal = document.getElementById('modal');
+      modal.classList.remove('active');
+    }
+
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('modal').addEventListener('click', (e) => {
+      if (e.target.id === 'modal') {
+        closeModal();
+      }
+    });
+
+    async function onConfigChange(config) {
+      const customFont = config.font_family || defaultConfig.font_family;
+      const baseFontStack = 'Georgia, serif';
+      const baseSize = config.font_size || defaultConfig.font_size;
+
+      document.body.style.fontFamily = `${customFont}, ${baseFontStack}`;
+      document.body.style.backgroundColor = config.background_color || defaultConfig.background_color;
+      document.body.style.color = config.text_color || defaultConfig.text_color;
+
+      const title = document.getElementById('calendar-title');
+      title.textContent = config.calendar_title || defaultConfig.calendar_title;
+      title.style.fontSize = `${baseSize * 2.5}px`;
+      title.style.color = config.text_color || defaultConfig.text_color;
+
+      const subtitle = document.getElementById('subtitle');
+      subtitle.textContent = config.subtitle || defaultConfig.subtitle;
+      subtitle.style.fontSize = `${baseSize * 1.1}px`;
+      subtitle.style.color = config.text_color || defaultConfig.text_color;
+
+      const doors = document.querySelectorAll('.door');
+      doors.forEach((door, index) => {
+        const front = door.querySelector('.door-front');
+        const back = door.querySelector('.door-back');
+
+        front.style.color = config.text_color || defaultConfig.text_color;
+        back.style.backgroundColor = config.secondary_action_color || defaultConfig.secondary_action_color;
+        back.style.color = config.text_color || defaultConfig.text_color;
+      });
+
+      const modalContent = document.getElementById('modal-content');
+      modalContent.style.backgroundColor = config.surface_color || defaultConfig.surface_color;
+
+      const modalDay = document.getElementById('modal-day');
+      modalDay.style.color = config.text_color || defaultConfig.text_color;
+      modalDay.style.fontSize = `${baseSize * 1.2}px`;
+
+      const modalTip = document.getElementById('modal-tip');
+      modalTip.style.color = config.text_color || defaultConfig.text_color;
+      modalTip.style.fontSize = `${baseSize * 1.1}px`;
+
+      const modalClose = document.getElementById('modal-close');
+      modalClose.style.color = config.text_color || defaultConfig.text_color;
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities: (config) => ({
+          recolorables: [
+            {
+              get: () => config.background_color || defaultConfig.background_color,
+              set: (value) => {
+                config.background_color = value;
+                window.elementSdk.setConfig({ background_color: value });
+              }
+            },
+            {
+              get: () => config.surface_color || defaultConfig.surface_color,
+              set: (value) => {
+                config.surface_color = value;
+                window.elementSdk.setConfig({ surface_color: value });
+              }
+            },
+            {
+              get: () => config.text_color || defaultConfig.text_color,
+              set: (value) => {
+                config.text_color = value;
+                window.elementSdk.setConfig({ text_color: value });
+              }
+            },
+            {
+              get: () => config.secondary_action_color || defaultConfig.secondary_action_color,
+              set: (value) => {
+                config.secondary_action_color = value;
+                window.elementSdk.setConfig({ secondary_action_color: value });
+              }
+            }
+          ],
+          borderables: [],
+          fontEditable: {
+            get: () => config.font_family || defaultConfig.font_family,
+            set: (value) => {
+              config.font_family = value;
+              window.elementSdk.setConfig({ font_family: value });
+            }
+          },
+          fontSizeable: {
+            get: () => config.font_size || defaultConfig.font_size,
+            set: (value) => {
+              config.font_size = value;
+              window.elementSdk.setConfig({ font_size: value });
+            }
+          }
+        }),
+        mapToEditPanelValues: (config) => new Map([
+          ["calendar_title", config.calendar_title || defaultConfig.calendar_title],
+          ["subtitle", config.subtitle || defaultConfig.subtitle],
+          ["tip_1", config.tip_1 || defaultConfig.tip_1],
+          ["tip_2", config.tip_2 || defaultConfig.tip_2],
+          ["tip_3", config.tip_3 || defaultConfig.tip_3],
+          ["tip_4", config.tip_4 || defaultConfig.tip_4],
+          ["tip_5", config.tip_5 || defaultConfig.tip_5],
+          ["tip_6", config.tip_6 || defaultConfig.tip_6],
+          ["tip_7", config.tip_7 || defaultConfig.tip_7],
+          ["tip_8", config.tip_8 || defaultConfig.tip_8],
+          ["tip_9", config.tip_9 || defaultConfig.tip_9],
+          ["tip_10", config.tip_10 || defaultConfig.tip_10],
+          ["tip_11", config.tip_11 || defaultConfig.tip_11],
+          ["tip_12", config.tip_12 || defaultConfig.tip_12],
+          ["tip_13", config.tip_13 || defaultConfig.tip_13],
+          ["tip_14", config.tip_14 || defaultConfig.tip_14],
+          ["tip_15", config.tip_15 || defaultConfig.tip_15],
+          ["tip_16", config.tip_16 || defaultConfig.tip_16],
+          ["tip_17", config.tip_17 || defaultConfig.tip_17],
+          ["tip_18", config.tip_18 || defaultConfig.tip_18],
+          ["tip_19", config.tip_19 || defaultConfig.tip_19],
+          ["tip_20", config.tip_20 || defaultConfig.tip_20],
+          ["tip_21", config.tip_21 || defaultConfig.tip_21],
+          ["tip_22", config.tip_22 || defaultConfig.tip_22],
+          ["tip_23", config.tip_23 || defaultConfig.tip_23],
+          ["tip_24", config.tip_24 || defaultConfig.tip_24],
+          ["tip_25", config.tip_25 || defaultConfig.tip_25]
+        ])
+      });
+    }
+
+    function createSnowflakes() {
+      const snowflakesContainer = document.getElementById('snowflakes');
+      const snowflakeSymbols = ['❄', '❅', '❆'];
+      
+      for (let i = 0; i < 30; i++) {
+        const snowflake = document.createElement('div');
+        snowflake.className = 'snowflake';
+        snowflake.textContent = snowflakeSymbols[Math.floor(Math.random() * snowflakeSymbols.length)];
+        snowflake.style.left = Math.random() * 100 + '%';
+        snowflake.style.animationDuration = (Math.random() * 3 + 5) + 's';
+        snowflake.style.animationDelay = Math.random() * 5 + 's';
+        snowflake.style.opacity = Math.random() * 0.6 + 0.4;
+        snowflake.style.fontSize = (Math.random() * 1 + 0.8) + 'rem';
+        snowflakesContainer.appendChild(snowflake);
+      }
+    }
+
+    createSnowflakes();
+    createCalendar();
+    onConfigChange(window.elementSdk?.config || defaultConfig);
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'99d942d331cbe578',t:'MTc2Mjk4NDM5NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
